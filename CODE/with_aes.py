@@ -217,6 +217,15 @@ if __name__ == "__main__":
     aes_key = hashlib.sha256(sha256_input.encode()).digest()  # Derive AES key from SHA-256 input
     encrypted_qr = encrypt_aes(scrambled_qr.tobytes(), aes_key)
 
+    # Display the AES-encrypted scrambled QR code
+    print("AES-Encrypted Scrambled QR Code:")
+    encrypted_qr_array = np.frombuffer(encrypted_qr, dtype=np.uint8)
+    encrypted_qr_2d = encrypted_qr_array[:400*400].reshape((400, 400))  # Reshape to 2D for visualization
+    plt.imshow(encrypted_qr_2d, cmap='gray')
+    plt.title("AES-Encrypted Scrambled QR Code")
+    plt.axis('off')
+    plt.show()
+
     # Generate shares using XOR-based diffusion
     try:
         share_size = int(input("Input the number of shares images you want to create for encrypting (min is 2, max is 8): "))
