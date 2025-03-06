@@ -21,11 +21,11 @@
 - [x] Complete Permutation Scramble
 - [x] Complete LSS algorithm implementation
 - [ ] Explore better ways to diffuse
-    - [ ] Shamir's Secret Sharing
+    - [x] Shamir's Secret Sharing
     - [ ] K out of N share's method
-    - [ ] Can i use a **Pscramble + AES + Share diffusion system?**
+    - [x] Can i use a **Pscramble + AES + Share diffusion system?**
 
-- [ ] Figure out how to use SHA256 for the LSS input
+- [x] Figure out how to use SHA256 for the LSS input
 - [ ] Figure out BlockChain implementation
 
 
