@@ -20,7 +20,7 @@
 - [ ] Reconstruct Literature Survey
 - [x] Complete Permutation Scramble
 - [x] Complete LSS algorithm implementation
-- [ ] Explore better ways to diffuse
+- [x] Explore better ways to diffuse
     - [x] Shamir's Secret Sharing
     - [ ] K out of N share's method
     - [x] Can i use a **Pscramble + AES + Share diffusion system?**
