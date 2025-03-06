@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import qrcode
+import hashlib
 from PIL import Image
 
 # Define PSNR and NCORR functions
@@ -17,16 +18,22 @@ def normxcorr2D(original, reconstructed):
     return corr[0, 1]
 
 # Permutation Scrambling Functions
-def lss_permutation(seed, n, r=3.9, s=3.0):
+def sha256_to_float(seed_string):
+    """Convert SHA-256 hash of a string into a floating-point number."""
+    hash_digest = hashlib.sha256(seed_string.encode()).hexdigest()
+    int_value = int(hash_digest[:16], 16)  # Take first 16 hex characters
+    return (int_value % (10**10)) / (10**10)  # Normalize to range (0,1)
+
+def lss_permutation(seed_string, n, r=3.9, s=3.0):
     """
     Generate a valid and chaotic permutation sequence using LSS.
-    :param seed: Initial seed value (x0) for the LSS algorithm.
+    :param seed_string: String input to generate SHA-256 hash seed.
     :param n: Length of the permutation sequence.
     :param r: Control parameter for the logistic map (default: 3.9).
     :param s: Control parameter for the sine map (default: 3.0).
     :return: A list of permuted indices.
     """
-    x = seed  # Initial seed
+    x = sha256_to_float(seed_string)  # Convert hash to seed value
     sequence = [(x := (r * x * (1 - x) + s * np.sin(np.pi * x)) % 1, i) for i in range(n)]
     permuted_indices = [i for _, i in sorted(sequence, reverse=True)]
     return np.array(permuted_indices)
@@ -154,11 +161,14 @@ def display_images(qr_image, shares, reconstructed_image, title_prefix=""):
 
 # Main Program
 if __name__ == "__main__":
-    # Ask the user for a string input
-    user_input = input("Enter a string to generate a QR code: ")
+    # Ask the user for a SHA-256 input string
+    sha256_input = input("Enter a string for SHA-256-based permutation: ")
+    
+    # Ask the user for a separate string to generate a QR code
+    qr_input = input("Enter a string to generate a QR code: ")
 
     # Generate QR Code
-    qr = qrcode.make(user_input)
+    qr = qrcode.make(qr_input)
     qr.save("qr.png")
 
     # Load and preprocess the QR code image
@@ -169,10 +179,9 @@ if __name__ == "__main__":
     # Divide the QR code into 4x4 blocks
     divided_blocks = divide_qr(img)
 
-    # Generate permutation sequence
-    seed = 0.85  # Change seed for more randomization
-    n = 16  # Number of blocks (4x4 grid)
-    permutation = lss_permutation(seed, n)
+    # Generate permutation sequence using SHA-256 input string
+    n = 16
+    permutation = lss_permutation(sha256_input, n)
     print("Permutation Sequence:", permutation)
 
     # Scramble the blocks
@@ -198,31 +207,46 @@ if __name__ == "__main__":
     # Encrypt the scrambled QR code
     shares, scrambled_matrix = encrypt(scrambled_qr, share_size)
 
-    # Decrypt the shares to reconstruct the scrambled QR code
-    output_image, output_matrix = decrypt(shares)
+    # Display the shares
+    print("Shares:")
+    display_images(scrambled_qr, [shares[:, :, i] for i in range(share_size)], scrambled_matrix, "Scrambled")
 
-    # Display the shares and reconstructed scrambled QR code
-    print("Shares and Reconstructed Scrambled QR Code:")
-    display_images(scrambled_qr, [shares[:, :, i] for i in range(share_size)], output_matrix, "Scrambled")
+    # Ask for the SHA-256 password again
+    sha256_input_verify = input("Enter the SHA-256-based password again to reconstruct the QR code: ")
 
-    # Descramble the reconstructed QR code
-    descrambled_blocks = descramble_qr(divide_qr(output_matrix), permutation)
-    descrambled_qr = rebuild_matrix(descrambled_blocks)
+    # Verify the password
+    if sha256_input_verify == sha256_input:
+        print("Password verified. Reconstructing the QR code...")
 
-    # Display the final descrambled QR code
-    print("Descrambled QR Code:")
-    plt.imshow(descrambled_qr, cmap='gray')
-    plt.title("Descrambled QR Code")
-    plt.axis('off')
-    plt.show()
+        # Decrypt the shares to reconstruct the scrambled QR code
+        output_image, output_matrix = decrypt(shares)
 
-    # Evaluation metrics
-    # Evaluation metrics
-    original_qr = np.asarray(Image.open("qr.png").convert('L'))
+        # Descramble the reconstructed QR code
+        descrambled_blocks = descramble_qr(divide_qr(output_matrix), permutation)
+        descrambled_qr = rebuild_matrix(descrambled_blocks)
 
-# Resize the descrambled QR code to match the original QR code dimensions
-    descrambled_qr_resized = cv2.resize(descrambled_qr, (original_qr.shape[1], original_qr.shape[0]))
+        # Display the final descrambled QR code
+        print("Descrambled QR Code:")
+        plt.imshow(descrambled_qr, cmap='gray')
+        plt.title("Descrambled QR Code")
+        plt.axis('off')
+        plt.show()
 
-    print("Evaluation metrics:")
-    print(f"PSNR value is {psnr(original_qr, descrambled_qr_resized)} dB")
-    print(f"Mean NCORR value is {normxcorr2D(original_qr, descrambled_qr_resized)}")
+        # Evaluation metrics
+        original_qr = np.asarray(Image.open("qr.png").convert('L'))
+
+        # Resize the descrambled QR code to match the original QR code dimensions
+        descrambled_qr_resized = cv2.resize(descrambled_qr, (original_qr.shape[1], original_qr.shape[0]))
+
+        print("Evaluation metrics:")
+        print(f"PSNR value is {psnr(original_qr, descrambled_qr_resized)} dB")
+        print(f"Mean NCORR value is {normxcorr2D(original_qr, descrambled_qr_resized)}")
+    else:
+        print("Incorrect password. Generating wrong output...")
+
+        # Generate a random wrong output
+        wrong_output = np.random.randint(0, 256, size=scrambled_qr.shape, dtype=np.uint8)
+        plt.imshow(wrong_output, cmap='gray')
+        plt.title("Wrong Output (Incorrect Password)")
+        plt.axis('off')
+        plt.show()
