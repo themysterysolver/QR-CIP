@@ -178,6 +178,7 @@ def display_images(qr_image, shares, reconstructed_image, title_prefix=""):
     plt.show()
 
 # Main Program
+# Main Program
 if __name__ == "__main__":
     # Ask the user for a SHA-256 input string
     sha256_input = input("Enter a string for SHA-256-based permutation: ")
@@ -242,15 +243,23 @@ if __name__ == "__main__":
     print("Shares:")
     display_images(scrambled_qr, shares, scrambled_qr, "Scrambled")
 
+    # Reconstruct the encrypted QR code from shares
+    reconstructed_encrypted_qr = reconstruct_image(shares)
+
+    # Display the AES-encrypted image after XORing shares
+    print("AES-Encrypted Image After XORing Shares:")
+    reconstructed_encrypted_qr_2d = np.frombuffer(reconstructed_encrypted_qr, dtype=np.uint8)[:400*400].reshape((400, 400))
+    plt.imshow(reconstructed_encrypted_qr_2d, cmap='gray')
+    plt.title("AES-Encrypted Image After XORing Shares")
+    plt.axis('off')
+    plt.show()
+
     # Ask for the SHA-256 password again
     sha256_input_verify = input("Enter the SHA-256-based password again to reconstruct the QR code: ")
 
     # Verify the password
     if sha256_input_verify == sha256_input:
         print("Password verified. Reconstructing the QR code...")
-
-        # Reconstruct the encrypted QR code from shares
-        reconstructed_encrypted_qr = reconstruct_image(shares)
 
         # Decrypt the reconstructed QR code using AES
         decrypted_qr = decrypt_aes(reconstructed_encrypted_qr, aes_key)
