@@ -16,7 +16,7 @@
 2. Prove that sniffing the images is hard using a trial network attack
 ---
 
-- [ ] Rework project Title
+- [x] Rework project Title
 - [ ] Reconstruct Literature Survey
 - [x] Complete Permutation Scramble
 - [x] Complete LSS algorithm implementation
