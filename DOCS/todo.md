@@ -17,7 +17,7 @@
 ---
 
 - [x] Rework project Title
-- [ ] Reconstruct Literature Survey
+- [x] Reconstruct Literature Survey
 - [x] Complete Permutation Scramble
 - [x] Complete LSS algorithm implementation
 - [x] Explore better ways to diffuse
