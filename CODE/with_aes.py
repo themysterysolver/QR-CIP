@@ -6,6 +6,7 @@ import hashlib
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from PIL import Image
+from skimage.metrics import structural_similarity as ssim  # Import SSIM
 
 # Define PSNR and NCORR functions
 def psnr(original, reconstructed):
@@ -178,7 +179,6 @@ def display_images(qr_image, shares, reconstructed_image, title_prefix=""):
     plt.show()
 
 # Main Program
-# Main Program
 if __name__ == "__main__":
     # Ask the user for a SHA-256 input string
     sha256_input = input("Enter a string for SHA-256-based permutation: ")
@@ -194,6 +194,13 @@ if __name__ == "__main__":
     img = cv2.imread("qr.png")
     img = crop_qr_border(img)
     img = cv2.resize(img, (400, 400))  # Ensure the image is 400x400
+
+    # Display the generated QR code
+    print("Generated QR Code:")
+    plt.imshow(img, cmap='gray')
+    plt.title("Generated QR Code")
+    plt.axis('off')
+    plt.show()
 
     # Divide the QR code into 4x4 blocks
     divided_blocks = divide_qr(img)
@@ -286,9 +293,15 @@ if __name__ == "__main__":
         if len(descrambled_qr_resized.shape) == 3:
             descrambled_qr_resized = cv2.cvtColor(descrambled_qr_resized, cv2.COLOR_BGR2GRAY)
 
+        # Calculate PSNR, NCORR, and SSIM
+        psnr_value = psnr(original_qr, descrambled_qr_resized)
+        ncorr_value = normxcorr2D(original_qr, descrambled_qr_resized)
+        ssim_value = ssim(original_qr, descrambled_qr_resized, data_range=255)
+
         print("Evaluation metrics:")
-        print(f"PSNR value is {psnr(original_qr, descrambled_qr_resized)} dB")
-        print(f"Mean NCORR value is {normxcorr2D(original_qr, descrambled_qr_resized)}")
+        print(f"PSNR value is {psnr_value} dB")
+        print(f"Mean NCORR value is {ncorr_value}")
+        print(f"SSIM value is {ssim_value}")
     else:
         print("Incorrect password. Generating wrong output...")
 
