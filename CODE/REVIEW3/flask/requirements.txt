@@ -1,0 +1,4 @@
+flask
+supabase
+psycopg2
+werkzeug
