@@ -90,16 +90,18 @@
     <!-- Right: Sender -->
     <div class="right-panel">
         <h2>📤 Send To</h2>
-        <form action="/send_data" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="sender" value="{{ username }}">
+        <form action="/dashboard" method="POST" enctype="multipart/form-data">
             <label>Receiver Phone Number:</label>
             <input type="text" name="receiver" required>
 
             <label>Upload Document:</label>
-            <input type="file" name="document">
+            <input type="file" name="document" required>
 
             <label>Enter Secret Key:</label>
-            <input type="text" name="key">
+            <input type="text" name="key" required>
+
+            <label>Share Split Count:</label>
+            <input type="number" name="share_split_count" required>
 
             <button type="submit">Send</button>
         </form>

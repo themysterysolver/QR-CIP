@@ -1,99 +1,121 @@
+import os
+import sys
+sys.path.append('C:/Users/DELL/OneDrive/Desktop/MIT/CODES/FOR GIT HUB/QR-CIP/CODE/REVIEW3/flask')
 from flask import Flask, render_template, request, redirect, url_for, session
 from supabase import create_client
+from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-import os
-from postgrest.exceptions import APIError
+from base64 import b64encode
+from utils.encryption import process_and_generate_shares
+from io import BytesIO
+import qrcode
 
-# Load environment variables
+# Load env variables
 load_dotenv()
-
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "default_secret")
 
-if SUPABASE_URL is None or SUPABASE_API_KEY is None:
-    raise ValueError("Supabase URL or API Key not set. Check your .env file.")
+if not SUPABASE_URL or not SUPABASE_API_KEY:
+    raise ValueError("Supabase env variables not set.")
 
+# App setup
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "default_secret")  # Required for sessions
+app.secret_key = SECRET_KEY
 client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+
+# QR Generator
+def generate_qr_image(data):
+    qr = qrcode.make(data)
+    buf = BytesIO()
+    qr.save(buf, format='PNG')
+    buf.seek(0)
+    return buf
+
+# Save file to /static/
+def save_qr_to_static(qr_image, filename):
+    path = os.path.join(app.root_path, 'static')
+    os.makedirs(path, exist_ok=True)
+    file_path = os.path.join(path, filename)
+    with open(file_path, 'wb') as f:
+        f.write(qr_image.read())
+    return f"/static/{filename}"
 
 @app.route('/')
 def index():
-    return 'Welcome to the app!'
+    return redirect(url_for('login_form'))
 
-# Signup Route
-@app.route('/signup', methods=['GET'])
-def signup_form():
-    # Get the message from URL parameters (if it exists)
-    message = request.args.get('message')
-    return render_template('signup.html', message=message)
-
-@app.route('/signup', methods=['POST'])
+@app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    if request.method == 'GET':
+        return render_template('signup.html')
+    
     username = request.form['username']
-    phone_number = request.form['phone_number']
-    password = request.form['password']
-    hashed_password = generate_password_hash(password)
+    phone = request.form['phone_number']
+    password = generate_password_hash(request.form['password'])
 
-    # Check if username already exists
-    try:
-        existing_user = client.table("users").select("*").eq("username", username).execute().data
-        if existing_user:
-            return redirect(url_for('signup_form', message="Username already exists."))
+    if client.table("users").select("*").eq("username", username).execute().data:
+        return redirect(url_for('signup', message="Username already exists."))
 
-        # If not, insert new user
-        data = {
-            "username": username,
-            "phone": phone_number,
-            "password_hash": hashed_password
-        }
+    client.table("users").insert({
+        "username": username,
+        "phone": phone,
+        "password_hash": password
+    }).execute()
 
-        response = client.table("users").insert(data).execute()
-        return redirect(url_for('login_form'))  # Redirect to login page after signup
+    return redirect(url_for('login_form'))
 
-    except APIError as e:
-        err = e.args[0]
-        if isinstance(err, dict):
-            error_message = err.get("message") or err.get("details") or "An error occurred."
-        else:
-            error_message = str(err)
-        return redirect(url_for('signup_form', message=f"Signup error: {error_message}"))
-
-# Login Route
-@app.route('/login', methods=['GET'])
+@app.route('/login', methods=['GET', 'POST'])
 def login_form():
-    return render_template('login.html')
+    if request.method == 'GET':
+        return render_template('login.html')
 
-@app.route('/login', methods=['POST'])
-def login():
     username = request.form['username']
     password = request.form['password']
+    result = client.table("users").select("*").eq("username", username).execute().data
 
-    # Check if the user exists
-    user_data = client.table("users").select("*").eq("username", username).execute().data
+    if result and check_password_hash(result[0]['password_hash'], password):
+        session['username'] = username
+        return redirect(url_for('dashboard'))
+    return render_template('login.html', message="Invalid login.")
 
-    if user_data:
-        # Get stored password hash from database
-        stored_password_hash = user_data[0]["password_hash"]
-
-        # Check if password is correct
-        if check_password_hash(stored_password_hash, password):
-            # Successful login, set session and redirect to dashboard
-            session['username'] = username
-            return redirect(url_for('dashboard'))  # Redirect to dashboard on successful login
-        else:
-            return render_template('login.html', message="Incorrect password.")
-    else:
-        return render_template('login.html', message="User not found.")
-
-# Dashboard Route
-@app.route('/dashboard')
+@app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
-    # Ensure the user is logged in (session check)
     if 'username' not in session:
-        return redirect(url_for('login_form'))  # Redirect to login if not logged in
-    return render_template('dashboard.html', username=session['username'])
+        return redirect(url_for('login_form'))
+
+    if request.method == 'POST':
+        receiver = request.form['receiver']
+        key = request.form['key']
+        split_count = int(request.form['share_split_count'])
+
+        uploaded_file = request.files['document']
+        filename = secure_filename(uploaded_file.filename)
+        file_content = uploaded_file.read().decode('utf-8')  # assuming it's text
+
+        # Encrypt and generate shares
+        shares, encrypted_data = process_and_generate_shares(key, file_content, split_count)
+
+        # Create QR code from encrypted data
+        qr_image = generate_qr_image(encrypted_data.hex())
+        qr_filename = f"{session['username']}_qr.png"
+        qr_path = save_qr_to_static(qr_image, qr_filename)
+
+        # Insert to Supabase
+        client.table("qr_images").insert({
+            "username": session['username'],
+            "receiver": receiver,
+            "qr_image_path": qr_path,
+            "encrypted_qr_data": b64encode(encrypted_data).decode('utf-8'),
+            "shares": [b64encode(s).decode('utf-8') for s in shares]
+        }).execute()
+
+        return redirect(url_for('dashboard'))
+
+    # Get received shares
+    received = client.table("qr_images").select("*").eq("receiver", session['username']).execute().data
+    return render_template('dashboard.html', username=session['username'], received_shares=received)
 
 if __name__ == '__main__':
     app.run(debug=True)
