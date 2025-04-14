@@ -7,6 +7,9 @@
 </head>
 <body>
     <h2>Create Account</h2>
+
+    <!-- Show message if available -->
+    
     <form action="/signup" method="POST">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required><br><br>
@@ -19,5 +22,6 @@
 
         <button type="submit">Sign Up</button>
     </form>
+    <p style="color:red;">{{ message }}</p>
 </body>
 </html>
