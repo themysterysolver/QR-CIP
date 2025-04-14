@@ -98,3 +98,96 @@ my_flask_app/
 ├── venv/                 # Virtual environment (created by `python -m venv venv`)
 └── config.py             # (Optional: Configurations for Flask and Supabase)
 ```
+---
+
+# 🗺️ Roadmap to Achieve Your System
+
+---
+
+## 🔹 PHASE 1: DATABASE & BACKEND SETUP
+
+### 🎯 Your goals:
+- Store user data, encrypted shares, keys, and metadata  
+- Track the state of send/receive
+
+### ✅ Backend Stack (suggestion):
+- **Flask** / **FastAPI** (Python backend)  
+- **SQLite** / **PostgreSQL** (Database)  
+- **Web3.py** (Simulate blockchain)
+
+### ✅ Example DB Tables (Schema):
+
+| Table       | Fields                                                                 |
+|-------------|------------------------------------------------------------------------|
+| `users`     | id, username, phone_number, role (sender/receiver), etc.              |
+| `messages`  | id, sender_id, receiver_id, data_type, file_path, status              |
+| `shares`    | id, message_id, share_index, image_path, is_sent                      |
+| `otp_keys`  | id, user_id, otp, expires_at, is_used                                 |
+| `ledger`    | tx_id, sender_id, receiver_id, timestamp, share_id                    |
+
+---
+
+## 🔹 PHASE 2: ENCRYPTION & SHARE CREATION
+
+### 🔐 You already have this:
+- Generate QR from input `.txt`  
+- Scramble + Encrypt QR using **AES**  
+- Split into shares (16, or fewer if preferred)  
+- Save shares as images locally or on cloud  
+- Insert share records into DB
+
+### ✔️ Modify your script to:
+- Take `.txt` only  
+- Auto-extract data  
+- Encrypt and save each share with a message ID  
+- Link shares to receiver's phone number  
+
+---
+
+## 🔹 PHASE 3: DASHBOARD UI (HTML + JS)
+
+### 🧩 Dashboard layout:
+- **Top bar**: `Welcome, {username}`  
+- **Left**: Received queue  
+- **Right**: Sender form  
+
+➡️ We’ll build `dashboard.html` in the next step (if you're ready).
+
+---
+
+## 🔹 PHASE 4: BLOCKCHAIN / LEDGER SIMULATION
+
+### ⚙️ Simulate via:
+- A **Python dictionary** or **DB table** named `ledger`
+- On "send", log each transaction as a "block"
+
+### 🔜 Later enhancements:
+- Use **Web3.py** to interact with **Ganache** or **Ethereum testnet**
+- Push metadata and IPFS hash of images (if needed)
+
+---
+
+## 🔹 PHASE 5: RECEIVER SIDE FLOW
+
+### 📲 Flow:
+1. Receiver sees message from Sender (via queue)  
+2. Clicks **“Fetch OTP”**  
+3. OTP is generated and sent (simulate via console or SMS)  
+4. Receiver enters OTP  
+5. System verifies → Reconstructs QR using:
+   - All share images tied to message ID  
+   - Secret key  
+6. Final QR is shown!
+
+---
+
+## 🔹 PHASE 6: IMAGE SHARING STRATEGY
+
+### 🖼️ Since shares are images:
+- Save them to `static/shares/`
+- Store their paths in DB
+- Link them to message + receiver
+- Send via "blockchain ledger" by referencing ID/path
+
+> You can convert them to **base64** for blockchain later if desired.
+---
