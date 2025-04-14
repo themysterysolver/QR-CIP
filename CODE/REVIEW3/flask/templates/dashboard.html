@@ -1,10 +1,110 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .left-panel, .right-panel {
+            flex: 1;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .left-panel {
+            background-color: #f1f1f1;
+            border-right: 1px solid #ccc;
+        }
+
+        .right-panel {
+            background-color: #fff;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .share-item {
+            border: 1px solid #ccc;
+            background: #fff;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        form input[type="text"], form textarea, form input[type="file"] {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello, {{ username }}!</h1>
-    <p>Welcome to the dashboard.</p>
+
+<header>
+    Welcome, {{ username }}!
+</header>
+
+<div class="container">
+    <!-- Left: Receiver -->
+    <div class="left-panel">
+        <h2>📥 Receive Queue</h2>
+        {% if received_shares %}
+            {% for share in received_shares %}
+                <div class="share-item">
+                    <p><strong>From:</strong> {{ share.sender }}</p>
+                    <form action="/fetch_otp" method="POST">
+                        <input type="hidden" name="share_id" value="{{ share.id }}">
+                        <button type="submit">Fetch OTP</button>
+                    </form>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No incoming shares yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Right: Sender -->
+    <div class="right-panel">
+        <h2>📤 Send To</h2>
+        <form action="/send_data" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="sender" value="{{ username }}">
+            <label>Receiver Phone Number:</label>
+            <input type="text" name="receiver" required>
+
+            <label>Upload Document:</label>
+            <input type="file" name="document">
+
+            <label>Enter Secret Key:</label>
+            <input type="text" name="key">
+
+            <button type="submit">Send</button>
+        </form>
+    </div>
+</div>
+
 </body>
 </html>
