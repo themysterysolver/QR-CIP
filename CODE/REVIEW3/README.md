@@ -99,6 +99,32 @@ my_flask_app/
 └── config.py             # (Optional: Configurations for Flask and Supabase)
 ```
 ---
+```
+/project-root
+│
+├── app.py                       # Your main Flask app
+├── .env                         # Contains Supabase URL, API key, secret keys
+├── templates/
+│   ├── login.html
+│   ├── signup.html
+│   └── dashboard.html
+│
+├── static/                      # Optional: CSS, JS, uploaded files
+│
+├── blockchain/
+│   ├── __init__.py
+│   ├── block.py                 # Blockchain structure and logic
+│   └── ledger.json              # Optional: Persisted blockchain ledger
+│
+├── utils/
+│   ├── __init__.py
+│   ├── encryption.py            # Encryption/decryption logic
+│   └── otp_generator.py         # OTP (optional if using two-step retrieval)
+│
+└── uploads/                     # Temporarily store uploaded files (encrypted)
+
+```
+---
 
 # 🗺️ Roadmap to Achieve Your System
 
