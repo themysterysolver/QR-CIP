@@ -72,3 +72,29 @@ flowchart TD
     E2 --> F2[Load Shares from Blockchain]
     F2 --> G2[Request Key → Admin Approves]
     G2 --> H2[User Enters OTP to Unlock Final QR]
+```
+# 🚀 MVP Tech Stack
+
+| **Feature**       | **Tech Used**                     |
+|-------------------|-----------------------------------|
+| **Backend API**   | Flask (Python)                    |
+| **Auth / DB**     | Supabase (Auth + Postgres DB)     |
+| **File Upload**   | Supabase Storage or Base64        |
+| **QR Generation** | Python `qrcode` library           |
+| **OTP Key Send**  | Twilio (or mock for now)          |
+| **Frontend**      | HTML/JS *(optional for now)*      |
+
+---
+## FLASK DIRECTORY STRCTURE
+```
+my_flask_app/
+│
+├── app.py                # Main Flask app with routes and logic
+├── requirements.txt      # Dependencies for Flask and other libraries
+├── templates/            # HTML templates
+│   └── signup.html       # Sign-up form HTML
+├── static/               # Static files (e.g., CSS, JavaScript, Images)
+│   └── style.css         # (Optional: CSS file for styling)
+├── venv/                 # Virtual environment (created by `python -m venv venv`)
+└── config.py             # (Optional: Configurations for Flask and Supabase)
+```
