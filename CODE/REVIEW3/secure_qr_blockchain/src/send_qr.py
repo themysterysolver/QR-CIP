@@ -1,60 +1,86 @@
 import os
+import json
 import requests
 from web3 import Web3
-from upload_to_ipfs import upload_image_to_ipfs  # Assuming upload_to_ipfs.py has the IPFS uploading function
+from dotenv import load_dotenv
 
-# Alchemy API URL and your MetaMask details
-ALCHEMY_API_URL = os.getenv("ALCHEMY_API_URL")  # Example: 'https://eth-sepolia.g.alchemy.com/v2/your-api-key'
-SENDER_ADDRESS = os.getenv("SENDER_ADDRESS")  # Your MetaMask address
-PRIVATE_KEY = os.getenv("PRIVATE_KEY")  # Your MetaMask private key
-CONTRACT_ADDRESS = 'YOUR_DEPLOYED_CONTRACT_ADDRESS'  # Replace with your deployed contract address
-CONTRACT_ABI = 'YOUR_CONTRACT_ABI'  # Replace with your contract ABI, either in JSON or a Python dictionary format
+# Load environment variables
+load_dotenv()
 
-# Initialize Web3
-web3 = Web3(Web3.HTTPProvider(ALCHEMY_API_URL))
+# Constants from .env file
+PINATA_API_KEY = os.getenv("PINATA_API_KEY")
+PINATA_SECRET_API_KEY = os.getenv("PINATA_SECRET_API_KEY")
+ALCHEMY_API_URL = os.getenv("ALCHEMY_API_URL")
+SENDER_ADDRESS = os.getenv("SENDER_ADDRESS")
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+RECEIVER_ADDRESS = os.getenv("RECEIVER_ADDRESS")
+CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
+CONTRACT_ABI = json.loads(os.getenv("CONTRACT_ABI"))  # Parse the ABI from .env
 
-# Your contract
-contract = web3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
+# Web3 Setup
+w3 = Web3(Web3.HTTPProvider(ALCHEMY_API_URL))
 
-# Function to send IPFS hashes to the blockchain
-def send_ipfs_hashes(hashes):
-    # Set up the sender address
-    account = SENDER_ADDRESS
+# Verify connection to Ethereum node
+if not w3.is_connected():
+    raise Exception("Failed to connect to the Ethereum network.")
 
-    # Loop through each IPFS hash and send it to the smart contract
-    for i, hash in enumerate(hashes):
-        # Prepare the transaction data
-        tx = contract.functions.storeIPFSHash(i, hash).buildTransaction({
-            'gas': 500000,
-            'gasPrice': web3.toWei('20', 'gwei'),
-            'nonce': web3.eth.getTransactionCount(account),
-        })
+# Load contract
+contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
 
-        # Sign the transaction with your private key
-        signed_tx = web3.eth.account.signTransaction(tx, PRIVATE_KEY)
+def send_transaction(ipfs_hash):
+    """
+    Send the IPFS hash to the blockchain through a transaction.
+    """
+    # Prepare transaction data
+    tx_data = contract.functions.sendQRData(ipfs_hash).buildTransaction({
+        'from': SENDER_ADDRESS,
+        'gas': 2000000,
+        'gasPrice': w3.toWei('20', 'gwei'),
+        'nonce': w3.eth.getTransactionCount(SENDER_ADDRESS),
+    })
 
-        # Send the transaction
-        tx_hash = web3.eth.sendRawTransaction(signed_tx.rawTransaction)
-        print(f"Transaction sent! Hash: {tx_hash.hex()}")
+    # Sign the transaction
+    signed_tx = w3.eth.account.signTransaction(tx_data, PRIVATE_KEY)
 
-        # Optionally, you can wait for the receipt to ensure the transaction is mined
-        receipt = web3.eth.waitForTransactionReceipt(tx_hash)
-        print(f"Transaction receipt: {receipt}")
+    # Send the transaction
+    tx_hash = w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+    print(f"Transaction sent with hash: {tx_hash.hex()}")
+    return tx_hash.hex()
 
-# Main function for generating, uploading QR codes, and sending IPFS hashes to Ethereum
+def upload_image_to_ipfs(image_path):
+    """
+    Upload an image to IPFS using Pinata.
+    """
+    url = "https://api.pinata.cloud/pinning/pinFileToIPFS"
+    headers = {
+        "pinata_api_key": PINATA_API_KEY,
+        "pinata_secret_api_key": PINATA_SECRET_API_KEY
+    }
+    
+    with open(image_path, "rb") as f:
+        files = {"file": (os.path.basename(image_path), f)}
+        response = requests.post(url, files=files, headers=headers)
+    
+    if response.status_code == 200:
+        ipfs_hash = response.json()["IpfsHash"]
+        print(f"✅ Uploaded {image_path} to IPFS: {ipfs_hash}")
+        return ipfs_hash
+    else:
+        raise Exception(f"❌ Failed to upload to IPFS: {response.text}")
+
 def main():
-    # Example: Generate and split QR
-    qr_paths = ['path_to_qr_share1.png', 'path_to_qr_share2.png', 'path_to_qr_share3.png', 'path_to_qr_share4.png']
-    hashes = []
+    # Example IPFS upload and transaction
+    print("🚀 Uploading QR share to IPFS...")
+    for i in range(1, 5):
+        image_path = f"images/share_{i}.png"
+        try:
+            ipfs_hash = upload_image_to_ipfs(image_path)
+            print(f"🔗 Share {i} IPFS Hash: {ipfs_hash}")
+            # Send the IPFS hash to the blockchain
+            tx_hash = send_transaction(ipfs_hash)
+            print(f"Transaction successful! Hash: {tx_hash}")
+        except Exception as e:
+            print(f"Error: {e}")
 
-    # Upload the QR images to IPFS and collect the IPFS hashes
-    for qr_path in qr_paths:
-        ipfs_hash = upload_image_to_ipfs(qr_path)  # upload_to_ipfs.py should handle this function
-        hashes.append(ipfs_hash)
-
-    # Now, send the hashes to the Ethereum blockchain
-    send_ipfs_hashes(hashes)
-
-# Run the main function
 if __name__ == "__main__":
     main()
